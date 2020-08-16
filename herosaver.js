@@ -9,7 +9,7 @@ function init() {
 
     RK.STLExporter.prototype = {
 
-        constructor: RK.STLExporter,
+        constructor: THREE.STLExporter,
 
         parse: ( function () {
 
@@ -17,17 +17,11 @@ function init() {
             var normalMatrixWorld = new THREE.Matrix3();
 
             return function ( scenes ) {
-				
                 console.log(scenes);
-				
                 var output = '';
-				
                 output += 'solid exported\n';
-				
                 for(var scene_nr in scenes) {
-					
                     scenes[scene_nr].traverse( function ( object ) {
-						
                         if(object instanceof RK.Mesh){		    
                             // if object is hidden - exit
                             if(object.visible == false) return; 
@@ -38,37 +32,30 @@ function init() {
                             var mesh = object;
 
                             if(geometry instanceof RK.BufferGeometry){
-								//Get pose from skeleton
-                                var bufferGeometry = geometry.clone();
+                                var oldgeometry = geometry.clone();
                                 geometry = new RK.Geometry().fromBufferGeometry(geometry);
-                                var skinIndex = bufferGeometry.getAttribute('skinIndex0');
-                                var skinWeight = bufferGeometry.getAttribute('skinWeight0');
-                                var morphTarget = bufferGeometry.getAttribute('morphTarget0');
+                                var skinIndex = oldgeometry.getAttribute('skinIndex0');
+                                var skinWeight = oldgeometry.getAttribute('skinWeight0');
+                                var morphTarget = oldgeometry.getAttribute('morphTarget0');
                                 var mtcount = 0;
                                 while(typeof morphTarget !== 'undefined') {
                                     mtcount++;
-                                    morphTarget = bufferGeometry.getAttribute('morphTarget' + mtcount);
+                                    morphTarget = oldgeometry.getAttribute('morphTarget' + mtcount);
                                 }
                                 if(typeof skinIndex !== 'undefined') {
                                     geometry.skinIndices = [];
                                     geometry.skinWeights = [];
-                                    geometry.morphTargets = [];
-                                    for(var j = 0; j < mtcount; j++) {
+                                    //geometry.morphTargets = [];
+                                    /*for(var j = 0; j < mtcount; j++) {
                                         geometry.morphTargets[j] = {};
                                         geometry.morphTargets[j].vertices = [];
-                                    }
+                                    }*/
                                     for(var i = 0; i < geometry.vertices.length; i++) {
                                         geometry.skinIndices.push((new THREE.Vector4 ()).fromBufferAttribute(skinIndex,i));
                                         geometry.skinWeights.push((new THREE.Vector4 ()).fromBufferAttribute(skinWeight,i));
-                                        for(var j = 0; j < mtcount; j++) {
-                                            geometry.morphTargets[j].vertices.push((
-                                                new THREE.Vector3(
-                                                    bufferGeometry.getAttribute('morphTarget' + j).getX(i),
-                                                    bufferGeometry.getAttribute('morphTarget' + j).getY(i),
-                                                    bufferGeometry.getAttribute('morphTarget' + j).getZ(i)
-                                                )
-                                            ));
-                                        }
+                                        /*for(var j = 0; j < mtcount; j++) {
+                                            geometry.morphTargets[j].vertices.push((new THREE.Vector3 ()).fromBufferAttribute(oldgeometry.getAttribute('morphTarget' + j)));
+                                        }*/
                                     }
                                 }
                             }
@@ -129,12 +116,11 @@ function init() {
                                                 ];
 
                                                 //this checks to see if the mesh has any morphTargets - jc
-                                                if (geometry.morphTargets !== 'undefined') {										
+                                                /*if (geometry.morphTargets !== 'undefined') {										
                                                     var morphMatricesX = [];
                                                     var morphMatricesY = [];
                                                     var morphMatricesZ = [];
                                                     var morphMatricesInfluence = [];
-
                                                     for (var mt = 0; mt < geometry.morphTargets.length; mt++) {
                                                         //collect the needed vertex info - jc
                                                         morphMatricesX[mt] = geometry.morphTargets[mt].vertices[vertexIndex].x;
@@ -142,32 +128,26 @@ function init() {
                                                         morphMatricesZ[mt] = geometry.morphTargets[mt].vertices[vertexIndex].z;
                                                         morphMatricesInfluence[mt] = mesh.morphTargetInfluences[mt];
                                                     }
-                                                }
+                                                }*/
 
                                                 var finalVector = new THREE.Vector4();
 
-                                                if (geometry.morphTargets !== 'undefined') {
-
+                                                /*if (mesh.geometry.morphTargets !== 'undefined') {
                                                     var morphVector = new THREE.Vector4(vector.x, vector.y, vector.z);
-
                                                     for (var mt = 0; mt < geometry.morphTargets.length; mt++) {
                                                         //not pretty, but it gets the job done - jc
                                                         morphVector.lerp(new THREE.Vector4(morphMatricesX[mt], morphMatricesY[mt], morphMatricesZ[mt], 1), morphMatricesInfluence[mt]);
                                                     }
-
-                                                }
+                                                }*/
 
                                                 for (var k = 0; k < 4; k++) {
-                                                    if (geometry.morphTargets !== 'undefined') {
-                                                        var tempVector = new THREE.Vector4(morphVector.x, morphVector.y, morphVector.z);
-                                                    } else {
-                                                        var tempVector = new THREE.Vector4(vector.x, vector.y, vector.z);
-                                                    }                                                    
-                                                    
+
+                                                    var tempVector = new THREE.Vector4(vector.x, vector.y, vector.z);
                                                     tempVector.multiplyScalar(weights[k]);
                                                     //the inverse takes the vector into local bone space
-													//which is then transformed to the appropriate world space
-                                                    tempVector.applyMatrix4(inverses[k]).applyMatrix4(skinMatrices[k]);
+                                                    tempVector.applyMatrix4(inverses[k])
+                                                    //which is then transformed to the appropriate world space
+                                                        .applyMatrix4(skinMatrices[k]);
                                                     finalVector.add(tempVector);
 
                                                 }
@@ -200,13 +180,13 @@ function init() {
     }
 
     var model = CK.character;
-	var characterArea_hook = ".content-side:first";
-	var menu_style = {"margin-left": "20px", "font-size": "1.2em", "cursor" : "pointer" };
+	var characterArea_hook = ".headerMenu-trigger-label";
+	var menu_style = {"margin-left": "20px", "font-size": "1.4em", "color" : "rgba(255, 255, 255, 0.8)", "cursor" : "pointer" };
 	
 	var character_area, stl, stl_base, sjson, ljson, labeljson;
 	
 	stl = 				jQuery("<a />").css(menu_style).text("Export Figure");
-	stl_base = 			jQuery("<a />").css(menu_style).css({"margin-left": "125px"}).text("Export Model (STL)");
+	stl_base = 			jQuery("<a />").css(menu_style).text("Export Model (STL)");
 	sjson = 			jQuery("<a />").css(menu_style).text("Export (JSON)");
 	ljson  = 			jQuery("<input/>").attr({"type": "file", "id": "ljson"}).css({"display":"none"}).text("Import (JSON)");
 	labeljson  = 		jQuery("<label/>").attr({"for": "ljson"}).css(menu_style).text("Import (JSON)");
@@ -313,8 +293,8 @@ function inject_script(url, callback) {
   head.appendChild(script);
 }
 
-inject_script("//code.jquery.com/jquery-3.3.1.js", function () {
-    inject_script("//cdnjs.cloudflare.com/ajax/libs/three.js/108/three.js", function () { init() })
+inject_script("//code.jquery.com/jquery-3.3.1.min.js", function () {
+    inject_script("//cdnjs.cloudflare.com/ajax/libs/three.js/100/three.js", function () { init() })
 });
 
 function download_stl(object){
